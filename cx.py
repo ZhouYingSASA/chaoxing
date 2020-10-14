@@ -119,12 +119,19 @@ class AutoSign(object):
 
 	def get_all_classid(self) -> list:
 		"""获取课程主页中所有课程的classid和courseid"""
-		re_rule = r'<li style="position:relative">[\s]*<input type="hidden" name="courseId" value="(.*)" />[\s].*<input type="hidden" name="classId" value="(.*)" />[\s].*[\s].*[\s].*[\s].*[\s].*[\s].*[\s].*[\s].*[s].*[\s]*[\s].*[\s].*[\s].*[\s].*[\s].*<a  href=\'.*\' target="_blank" title=".*">(.*)</a>'
 		r = self.session.get(
 			'http://mooc1-2.chaoxing.com/visit/interaction',
 			headers=self.headers)
-		res = re.findall(re_rule, r.text)
-		return res
+		from bs4 import BeautifulSoup
+		soup = BeautifulSoup(r.text, "html.parser")
+		course_list = soup.select("li.courseItem")
+		class_course_list = []
+		for course in course_list:
+			class_name = course.select("div.Mconright.httpsClass > h3 > a")[0].text
+			course_id = course.select("input[type=hidden]:nth-child(1)")[0].get("value")
+			class_id = course.select("input[type=hidden]:nth-child(2)")[0].get("value")
+			class_course_list.append([course_id, class_id, class_name])
+		return class_course_list
 
 	async def get_activeid(self, classid, courseid, classname):
 		"""访问任务面板获取课程的活动id"""
@@ -266,7 +273,6 @@ class AutoSign(object):
 		final_msg = []
 		# 获取所有课程的classid和course_id
 		classid_courseId = self.get_all_classid()
-
 		# 获取所有课程activeid和签到类型
 		for i in classid_courseId:
 			coroutine = self.get_activeid(i[1], i[0], i[2])
